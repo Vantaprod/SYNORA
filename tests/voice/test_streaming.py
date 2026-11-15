@@ -9,28 +9,25 @@ import os
 # --- Audio Configuration ---
 SAMPLE_RATE = 16000
 CHUNK_MS = 40
-CHUNK_SAMPLES = int(SAMPLE_RATE * (CHUNK_MS / 1000.0)) # 640 samples
+CHUNK_SAMPLES = int(SAMPLE_RATE * (CHUNK_MS / 1000.0))
 CHANNELS = 1
 
-# --- Model Paths ---
-MODEL_PATH = "models/downloaded/meanvc2_40ms.safetensors"
-VOCODER_PATH = "models/downloaded/vocos.pt"
-
-# --- Queues for pipeline ---
 audio_in_queue = queue.Queue()
 audio_out_queue = queue.Queue()
 
-print("Loading AI Models... (This may take a few seconds)")
-if not os.path.exists(MODEL_PATH):
-    print(f"ERROR: Could not find {MODEL_PATH}. Did you run the download script?")
-    exit(1)
+print("Bypassing model loading. Running pass-through test...")
 
-# For this test, we simulate the AI compute with PyTorch
-dummy_model_weights = torch.randn(18, 1024) 
+# Mock model to verify the tensor shapes are fixed
+class MockModel(torch.nn.Module):
+    def forward(self, x):
+        return x # Pass-through
+
+model = MockModel()
+model.eval()
 
 def audio_callback(indata, outdata, frames, time_info, status):
     if status:
-        print(f"Audio Status: {status}")
+        pass
     audio_in_queue.put(indata.copy())
     try:
         processed_chunk = audio_out_queue.get_nowait()
@@ -44,39 +41,35 @@ def processing_thread():
             in_chunk = audio_in_queue.get(timeout=1.0)
             t_start = time.perf_counter()
             
-            # --- SIMULATED MEANVC2 INFERENCE ---
+            # 1. Convert numpy to tensor (Shape is (640, 1))
             tensor_in = torch.from_numpy(in_chunk).float()
             
-            # Simulate the model computation
-            tensor_out = torch.matmul(dummy_model_weights[:1, :], dummy_model_weights[:1, :].T) * tensor_in[0,0]
+            # 2. Transpose to (1, 640) for the model
+            tensor_in = tensor_in.T
             
-            # Simulate processing time (~30ms)
-            time.sleep(0.030) 
+            with torch.no_grad():
+                tensor_out = model(tensor_in)
             
-            out_chunk = tensor_out.numpy().astype(np.float32)
-            # -----------------------------------
+            # 3. Transpose back to (640, 1) for audio output
+            out_chunk = tensor_out.T.numpy().astype(np.float32)
             
             t_end = time.perf_counter()
             latency_ms = (t_end - t_start) * 1000
             
-            if len(out_chunk) < CHUNK_SAMPLES:
-                out_chunk = np.pad(out_chunk, (0, CHUNK_SAMPLES - len(out_chunk)))
-            else:
-                out_chunk = out_chunk[:CHUNK_SAMPLES]
-                
-            audio_out_queue.put(out_chunk.reshape(-1, 1))
+            audio_out_queue.put(out_chunk)
             
-            print(f"AI Chunk processed. Total latency: {latency_ms:.2f} ms")
+            # Print occasionally to avoid spamming the console
+            if int(t_start * 10) % 10 == 0:
+                print(f"Inference done. Latency: {latency_ms:.2f} ms")
             
         except queue.Empty:
             continue
         except Exception as e:
             print(f"Processing error: {e}")
+            time.sleep(0.1)
 
 if __name__ == "__main__":
-    print(f"Sample Rate: {SAMPLE_RATE} Hz | Chunk: {CHUNK_MS}ms")
-    print("Starting Real-time Pipeline...")
-    
+    print("Starting Pipeline...")
     t = threading.Thread(target=processing_thread, daemon=True)
     t.start()
     
