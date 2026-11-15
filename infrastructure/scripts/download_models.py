@@ -4,8 +4,9 @@ import urllib.request
 MODEL_DIR = "models/downloaded"
 os.makedirs(MODEL_DIR, exist_ok=True)
 
+# The API revealed the exact names are: meanvc2_40ms_40ms.safetensors and vocos.pt
 models_to_download = {
-    "meanvc2_40ms.safetensors": "https://huggingface.co/ASLP-lab/MeanVC2/resolve/main/meanvc2_40ms.safetensors",
+    "meanvc2_40ms_40ms.safetensors": "https://huggingface.co/ASLP-lab/MeanVC2/resolve/main/meanvc2_40ms_40ms.safetensors",
     "vocos.pt": "https://huggingface.co/ASLP-lab/MeanVC2/resolve/main/vocos.pt"
 }
 
