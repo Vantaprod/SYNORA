@@ -1,0 +1,43 @@
+﻿# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+*.pth
+*.pt
+*.safetensors
+*.onnx
+*.bin
+
+# Node
+node_modules/
+dist/
+.next/
+out/
+*.log
+
+# Rust / Tauri
+target/
+src-tauri/target/
+
+# Models — never commit weights
+models/downloaded/*
+!models/downloaded/.gitkeep
+
+# Environment
+.env
+.env.local
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+Thumbs.db
+.DS_Store
+
+# OBS / capture artifacts
+*.mkv
+*.mp4
+recordings/
